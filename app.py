@@ -9,8 +9,8 @@ import logging
 app = Flask(__name__)
 
 # Configure AWS credentials
-aws_access_key_id = "ADD YOUR AWS ACCESS KEY HERE"
-aws_secret_access_key = "ADD YOUR AWS SECRET KEY HERE"
+aws_access_key_id = 'YOUR_AWS_ACCESS_KEY'
+aws_secret_access_key = 'YOUR_AWS_SECRET_KEY'
 aws_region = 'us-east-1'
 
 s3_client = boto3.client('s3',
@@ -28,7 +28,7 @@ transcribe_client = boto3.client('transcribe',
 # Configure upload settings
 UPLOAD_FOLDER = 'temp_uploads'
 ALLOWED_EXTENSIONS = {'mp3', 'wav', 'flac', 'ogg'}
-S3_BUCKET = "ADD OYUR BUCKET NAME HERE"
+S3_BUCKET = 'your-s3-bucket-name'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
