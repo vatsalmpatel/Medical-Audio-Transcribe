@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Audio Transcription</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-section {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .progress-section {
+            margin: 20px 0;
+            display: none;
+        }
+        .status-section {
+            margin: 20px 0;
+            display: none;
+        }
+        .transcript-section {
+            margin: 20px 0;
+            display: none;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+        }
+        #transcriptText {
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+            animation: rotating 2s linear infinite;
+        }
+        @keyframes rotating {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Medical Audio Transcription</h1>
+        
+        <div class="upload-section" id="uploadSection">
+            <h2>Upload Audio File</h2>
+            <p>Supported formats: MP3, WAV, FLAC, OGG</p>
+            <input type="file" id="audioFile" accept=".mp3,.wav,.flac,.ogg">
+            <button onclick="uploadFile()" id="uploadButton">Upload</button>
+            <div id="uploadError" class="error"></div>
+        </div>
+
+        <div class="progress-section" id="progressSection">
+            <h3>Processing... <span class="loading">⭕</span></h3>
+            <p>Please wait while we transcribe your audio file.</p>
+        </div>
+
+        <div class="status-section" id="statusSection">
+            <h3>Transcription Status</h3>
+            <p id="statusMessage"></p>
+        </div>
+
+        <div class="transcript-section" id="transcriptSection">
+            <h3>Transcription Result</h3>
+            <div id="transcriptText"></div>
+        </div>
+    </div>
+
+    <script>
+        let jobName = null;
+        let statusCheckInterval = null;
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            const uploadButton = document.getElementById('uploadButton');
+            const uploadError = document.getElementById('uploadError');
+            const progressSection = document.getElementById('progressSection');
+            const statusSection = document.getElementById('statusSection');
+            const transcriptSection = document.getElementById('transcriptSection');
+
+            if (!file) {
+                uploadError.textContent = 'Please select a file first.';
+                return;
+            }
+
+            uploadButton.disabled = true;
+            uploadError.textContent = '';
+            transcriptSection.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await axios.post('/upload', formData);
+                jobName = response.data.job_name;
+                
+                progressSection.style.display = 'block';
+                statusSection.style.display = 'block';
+                
+                // Start checking status
+                startStatusCheck();
+            } catch (error) {
+                uploadError.textContent = error.response?.data?.error || 'Upload failed. Please try again.';
+                uploadButton.disabled = false;
+            }
+        }
+
+        function startStatusCheck() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+
+            statusCheckInterval = setInterval(checkStatus, 5000); // Check every 5 seconds
+        }
+
+        async function checkStatus() {
+            if (!jobName) return;
+
+            try {
+                const response = await axios.get(`/status/${jobName}`);
+                const statusMessage = document.getElementById('statusMessage');
+                const progressSection = document.getElementById('progressSection');
+                const transcriptSection = document.getElementById('transcriptSection');
+                const transcriptText = document.getElementById('transcriptText');
+
+                statusMessage.textContent = `Status: ${response.data.status}`;
+
+                if (response.data.status === 'COMPLETED') {
+                    clearInterval(statusCheckInterval);
+                    progressSection.style.display = 'none';
+                    
+                    // Display transcript
+                    transcriptSection.style.display = 'block';
+                    transcriptText.textContent = response.data.transcript_text;
+                    
+                    document.getElementById('uploadButton').disabled = false;
+                } else if (response.data.status === 'FAILED') {
+                    clearInterval(statusCheckInterval);
+                    progressSection.style.display = 'none';
+                    statusMessage.classList.add('error');
+                    document.getElementById('uploadButton').disabled = false;
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>
